@@ -39,6 +39,7 @@ for (const animal of animals) {
 
 let state;
 let pointer = null;
+let holdTimer = null;
 let rafId = null;
 let lastTime = 0;
 
@@ -48,7 +49,7 @@ function makeLevel(level) {
   const heroes = shuffle(animals).slice(0, heroCount);
   const shooterType = heroes[(level - 1) % heroes.length];
   const targets = makeTargets(level, heroes, shooterType);
-  const goalTotal = targets.filter((target) => !target.isBomb && !target.isPoop && target.id === shooterType.id).length;
+  const goalTotal = targets.filter((target) => target.isGoal).length;
 
   return {
     level,
@@ -115,15 +116,17 @@ function makeTargets(level, heroes, shooterType) {
       continue;
     }
 
-    const type = winningSlots.has(i) ? shooterType : animals[(i + level) % animals.length];
+    const type = winningSlots.has(i) ? shooterType : pickObstacleAnimal(i, level, shooterType);
     targets.push({
       ...type,
       x,
       y,
       baseX: x,
+      baseY: y,
       r: targetRadius,
       alive: true,
       pop: 0,
+      isGoal: winningSlots.has(i),
       isBomb: false,
       isPoop: false,
       phase: Math.random() * Math.PI * 2,
@@ -134,6 +137,11 @@ function makeTargets(level, heroes, shooterType) {
   return shuffle(targets);
 }
 
+function pickObstacleAnimal(index, level, shooterType) {
+  const choices = animals.filter((animal) => animal.id !== shooterType.id);
+  return choices[(index + level) % choices.length];
+}
+
 function makeBomb(x, y, moving, level) {
   return {
     id: "bomb",
@@ -142,6 +150,7 @@ function makeBomb(x, y, moving, level) {
     x,
     y,
     baseX: x,
+    baseY: y,
       r: Math.max(30, 36 - Math.floor(level / 3)),
     alive: true,
     pop: 0,
@@ -160,6 +169,7 @@ function makePoop(x, y, moving, level) {
     x,
     y,
     baseX: x,
+    baseY: y,
     r: Math.max(29, 34 - Math.floor(level / 3)),
     alive: true,
     pop: 0,
@@ -209,6 +219,10 @@ function getHeroQueuePosition(id) {
 function start(level = 1) {
   state = makeLevel(level);
   pointer = null;
+  if (holdTimer) {
+    window.clearTimeout(holdTimer);
+    holdTimer = null;
+  }
   lastTime = performance.now();
   message.classList.add("hidden");
   spawnShooter();
@@ -234,6 +248,15 @@ function canvasPoint(event) {
 function onPointerDown(event) {
   if (state.win || state.lose || state.flying || state.entering || !state.shooter) return;
   const p = canvasPoint(event);
+  const hero = getQueueHeroAtPoint(p);
+  if (hero) {
+    holdTimer = window.setTimeout(() => {
+      switchShooter(hero.id);
+      holdTimer = null;
+    }, 430);
+    return;
+  }
+
   if (distance(p, state.shooter) < 125) {
     pointer = { ...p };
     canvas.setPointerCapture(event.pointerId);
@@ -241,12 +264,20 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
+  if (holdTimer) {
+    window.clearTimeout(holdTimer);
+    holdTimer = null;
+  }
   if (!pointer || state.flying) return;
   pointer = canvasPoint(event);
   draw();
 }
 
 function onPointerUp(event) {
+  if (holdTimer) {
+    window.clearTimeout(holdTimer);
+    holdTimer = null;
+  }
   if (!pointer || state.flying || state.entering || !state.shooter) return;
 
   const pull = {
@@ -266,6 +297,29 @@ function onPointerUp(event) {
   state.shooter.vy = Math.sin(angle) * shotSpeed;
   state.flying = true;
   pointer = null;
+}
+
+function getQueueHeroAtPoint(point) {
+  const gap = 78;
+  const startX = W / 2 - ((state.heroes.length - 1) * gap) / 2;
+
+  for (let i = 0; i < state.heroes.length; i += 1) {
+    const hero = state.heroes[i];
+    const x = startX + i * gap;
+    if (Math.hypot(point.x - x, point.y - queueY) < 42) return hero;
+  }
+
+  return null;
+}
+
+function switchShooter(heroId) {
+  if (state.flying || state.entering || !state.shooter) return;
+  const hero = state.heroes.find((item) => item.id === heroId);
+  if (!hero || hero.id === state.shooterType.id) return;
+
+  state.shooterType = hero;
+  state.shooter = null;
+  spawnShooter();
 }
 
 function loop(time = performance.now()) {
@@ -297,8 +351,11 @@ function updateSparkles(dt) {
 function updateTargets(dt, time) {
   for (const target of state.targets) {
     if (target.pop > 0) target.pop = Math.max(0, target.pop - dt * 3);
-    if (!target.alive || !target.speed) continue;
-    target.x = target.baseX + Math.sin(time * target.speed + target.phase) * 52;
+    if (!target.alive) continue;
+    const orbit = target.speed ? 38 : 14;
+    const drift = target.speed || 0.28;
+    target.x = target.baseX + Math.cos(time * drift + target.phase) * orbit;
+    target.y = target.baseY + Math.sin(time * drift + target.phase) * orbit * 0.55;
   }
 }
 
@@ -391,13 +448,13 @@ function handleHit(target) {
 
   if (target.id === state.shooter.id) {
     target.alive = false;
-    state.goalLeft = Math.max(0, state.goalLeft - 1);
-    state.score += 100 + state.level * 20;
+    if (target.isGoal) state.goalLeft = Math.max(0, state.goalLeft - 1);
+    state.score += target.isGoal ? 100 + state.level * 20 : 40;
     state.flying = false;
     state.shooter = null;
     burst(target.x, target.y, target.color);
     updateHud();
-    if (state.goalLeft <= 0) {
+    if (target.isGoal && state.goalLeft <= 0) {
       state.win = true;
       if (state.level >= maxLevel) {
         showMessage("모두 깼어!\n바근지팡 최고!");
@@ -602,6 +659,12 @@ function drawHeroQueue() {
   ctx.beginPath();
   ctx.roundRect(88, H - 132, W - 176, 92, 36);
   ctx.fill();
+
+  ctx.fillStyle = "#6b788a";
+  ctx.font = "700 17px 'Segoe UI', 'Noto Sans KR', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("아래 친구를 길게 누르면 바꿔요", W / 2, H - 128);
 
   for (let i = 0; i < state.heroes.length; i += 1) {
     const hero = state.heroes[i];
