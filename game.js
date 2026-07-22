@@ -11,6 +11,7 @@ const nameStartBtn = document.getElementById("nameStartBtn");
 const rankModal = document.getElementById("rankModal");
 const rankList = document.getElementById("rankList");
 const rankRestartBtn = document.getElementById("rankRestartBtn");
+const soundBtn = document.getElementById("soundBtn");
 const homeBtn = document.getElementById("homeBtn");
 const restartBtn = document.getElementById("restartBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -27,6 +28,7 @@ const airDrag = 0.997;
 const wallBounce = 0.78;
 const nicknameKey = "bageunjipang:nickname";
 const ranksKey = "bageunjipang:ranks";
+const soundKey = "bageunjipang:sound";
 const animals = [
   { id: "moon", color: "#ead9ff", label: "달", src: "./assets/character-1.png" },
   { id: "cookie", color: "#ffd2a1", label: "쿠키", src: "./assets/character-2.png" },
@@ -53,6 +55,13 @@ let queuePress = null;
 let rafId = null;
 let lastTime = 0;
 let currentPlayer = localStorage.getItem(nicknameKey) || "";
+let audioCtx = null;
+let musicTimer = null;
+let musicStep = 0;
+let soundOn = localStorage.getItem(soundKey) === "on";
+
+const melody = [523.25, 659.25, 783.99, 659.25, 587.33, 739.99, 880, 739.99, 659.25, 783.99, 987.77, 783.99, 587.33, 659.25, 739.99, 880];
+const bass = [261.63, 261.63, 293.66, 293.66, 329.63, 329.63, 293.66, 392];
 
 function makeLevel(level, resetScore = false) {
   level = Math.max(1, Math.min(level, maxLevel));
@@ -270,6 +279,7 @@ function start(level = 1, resetScore = false) {
   message.classList.add("hidden");
   spawnShooter();
   updateHud();
+  if (soundOn) startMusic();
   loop();
 }
 
@@ -279,6 +289,95 @@ function updateHud() {
   timeText.textContent = Math.max(0, Math.ceil(state.timeLeft));
   scoreText.textContent = state.score;
   nextBtn.textContent = state.level >= maxLevel ? "처음으로" : "다음 단계";
+  soundBtn.textContent = soundOn ? "소리 끄기" : "소리 켜기";
+}
+
+function ensureAudio() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  if (audioCtx.state === "suspended") audioCtx.resume();
+}
+
+function setSound(enabled) {
+  soundOn = enabled;
+  localStorage.setItem(soundKey, enabled ? "on" : "off");
+  if (enabled) {
+    ensureAudio();
+    startMusic();
+  } else {
+    stopMusic();
+  }
+  if (state) updateHud();
+  else soundBtn.textContent = soundOn ? "소리 끄기" : "소리 켜기";
+}
+
+function startMusic() {
+  if (!soundOn || musicTimer) return;
+  ensureAudio();
+  musicTimer = window.setInterval(playMusicStep, 180);
+}
+
+function stopMusic() {
+  if (!musicTimer) return;
+  window.clearInterval(musicTimer);
+  musicTimer = null;
+}
+
+function playTone(frequency, duration = 0.12, type = "square", volume = 0.045, offset = 0) {
+  if (!soundOn || !audioCtx) return;
+  const start = audioCtx.currentTime + offset;
+  const osc = audioCtx.createOscillator();
+  const gain = audioCtx.createGain();
+  osc.type = type;
+  osc.frequency.setValueAtTime(frequency, start);
+  gain.gain.setValueAtTime(0.0001, start);
+  gain.gain.exponentialRampToValueAtTime(volume, start + 0.015);
+  gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+  osc.connect(gain).connect(audioCtx.destination);
+  osc.start(start);
+  osc.stop(start + duration + 0.02);
+}
+
+function playNoise(duration = 0.12, volume = 0.08) {
+  if (!soundOn || !audioCtx) return;
+  const buffer = audioCtx.createBuffer(1, audioCtx.sampleRate * duration, audioCtx.sampleRate);
+  const data = buffer.getChannelData(0);
+  for (let i = 0; i < data.length; i += 1) data[i] = Math.random() * 2 - 1;
+  const noise = audioCtx.createBufferSource();
+  const gain = audioCtx.createGain();
+  noise.buffer = buffer;
+  gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+  gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + duration);
+  noise.connect(gain).connect(audioCtx.destination);
+  noise.start();
+}
+
+function playMusicStep() {
+  if (!soundOn || !audioCtx || state?.win || state?.lose) return;
+  playTone(melody[musicStep % melody.length], 0.105, "square", 0.026);
+  if (musicStep % 2 === 0) playTone(bass[Math.floor(musicStep / 2) % bass.length], 0.14, "triangle", 0.018);
+  musicStep += 1;
+}
+
+function playPopSound() {
+  playTone(784, 0.07, "square", 0.06);
+  playTone(1046.5, 0.09, "square", 0.05, 0.055);
+}
+
+function playMissSound() {
+  playTone(246.94, 0.09, "sawtooth", 0.045);
+  playTone(196, 0.12, "sawtooth", 0.04, 0.07);
+}
+
+function playBombSound() {
+  playNoise(0.18, 0.09);
+  playTone(110, 0.18, "sawtooth", 0.05);
+}
+
+function playWinSound() {
+  playTone(523.25, 0.1, "square", 0.055);
+  playTone(659.25, 0.1, "square", 0.055, 0.09);
+  playTone(783.99, 0.12, "square", 0.055, 0.18);
+  playTone(1046.5, 0.18, "square", 0.05, 0.3);
 }
 
 function canvasPoint(event) {
@@ -408,6 +507,8 @@ function updateTimer(dt) {
     state.lose = true;
     state.flying = false;
     state.shooter = null;
+    stopMusic();
+    playMissSound();
     updateHud();
     showMessage("시간 끝!\n다시 해보자");
     return;
@@ -416,10 +517,15 @@ function updateTimer(dt) {
 }
 
 function cleanName(value) {
-  return value.trim().replace(/\s+/g, " ").slice(0, 10) || "친구";
+  return value
+    .replace(/[^0-9A-Za-z가-힣ㄱ-ㅎㅏ-ㅣ ]/g, "")
+    .trim()
+    .replace(/\s+/g, " ")
+    .slice(0, 10) || "친구";
 }
 
 function beginGameFromName() {
+  if (soundOn) ensureAudio();
   currentPlayer = cleanName(nameInput.value);
   localStorage.setItem(nicknameKey, currentPlayer);
   nameModal.classList.add("hidden");
@@ -455,6 +561,7 @@ function compareRanks(a, b) {
 }
 
 function showRanks() {
+  stopMusic();
   const ranks = readRanks();
   rankList.innerHTML = "";
   for (const rank of ranks.slice(0, 5)) {
@@ -590,6 +697,8 @@ function updateShooter(dt) {
 function handleHit(target) {
   if (target.isBomb) {
     burst(target.x, target.y, "#ff5a5f");
+    stopMusic();
+    playBombSound();
     state.lose = true;
     state.flying = false;
     showMessage("폭탄을 맞혔어!\n다시 도전!");
@@ -610,9 +719,11 @@ function handleHit(target) {
     state.flying = false;
     state.shooter = null;
     burst(target.x, target.y, target.color);
+    playPopSound();
     updateHud();
     if (target.isGoal && state.goalLeft <= 0) {
       state.win = true;
+      playWinSound();
       if (state.level >= maxLevel) {
         saveRank();
         showRanks();
@@ -633,11 +744,13 @@ function failShot(shouldReturn) {
   if (!state.shooter || state.shooter.missed) return;
   state.shooter.missed = true;
   state.shots = Math.max(0, state.shots - 1);
+  playMissSound();
   updateHud();
 
   if (state.shots <= 0) {
     state.lose = true;
     state.flying = false;
+    stopMusic();
     showMessage("기회 끝!\n다시 해보자");
     return;
   }
@@ -988,6 +1101,7 @@ nameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") beginGameFromName();
 });
 rankRestartBtn.addEventListener("click", () => start(1, true));
+soundBtn.addEventListener("click", () => setSound(!soundOn));
 homeBtn.addEventListener("click", () => start(1, true));
 restartBtn.addEventListener("click", () => start(state.level));
 nextBtn.addEventListener("click", () => {
@@ -999,4 +1113,5 @@ nextBtn.addEventListener("click", () => {
 });
 
 nameInput.value = currentPlayer;
+soundBtn.textContent = soundOn ? "소리 끄기" : "소리 켜기";
 setTimeout(() => nameInput.focus(), 100);

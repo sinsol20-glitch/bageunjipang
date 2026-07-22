@@ -51,6 +51,12 @@ body {
   min-width: 0;
 }
 
+.top-actions {
+  display: flex;
+  flex: 0 0 auto;
+  gap: 8px;
+}
+
 .eyebrow {
   color: #5c7a75;
   font-size: 14px;
@@ -78,7 +84,7 @@ h1 {
   flex: 0 0 auto;
   font-size: 15px;
   min-height: 42px;
-  padding: 10px 14px;
+  padding: 10px 12px;
 }
 
 .stats div {
@@ -271,9 +277,9 @@ button:hover {
   }
 
   .home-button {
-    font-size: 14px;
+    font-size: 13px;
     min-height: 40px;
-    padding: 8px 12px;
+    padding: 8px 9px;
   }
 
   .stats div {
