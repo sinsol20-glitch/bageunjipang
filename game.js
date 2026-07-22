@@ -544,7 +544,7 @@ function drawGuide() {
   ctx.lineCap = "round";
   ctx.setLineDash([12, 12]);
   ctx.beginPath();
-  drawBouncePath(launchSpot.x, launchSpot.y, Math.cos(angle), Math.sin(angle), 1500, state.shooter.r + 18);
+  drawBouncePath(launchSpot.x, launchSpot.y, Math.cos(angle), Math.sin(angle), 3200, state.shooter.r + 18);
   ctx.stroke();
   ctx.setLineDash([]);
 }
@@ -561,12 +561,13 @@ function drawBouncePath(x, y, dirX, dirY, length, startOffset = 0) {
 
   ctx.moveTo(currentX, currentY);
 
-  for (let bounce = 0; bounce < 4 && remaining > 0; bounce += 1) {
+  for (let bounce = 0; bounce < 9 && remaining > 0; bounce += 1) {
     let t = remaining;
 
     if (vx > 0) t = Math.min(t, (maxX - currentX) / vx);
     if (vx < 0) t = Math.min(t, (minX - currentX) / vx);
     if (vy < 0) t = Math.min(t, (minY - currentY) / vy);
+    if (t <= 0.01) break;
 
     const nextX = currentX + vx * t;
     const nextY = currentY + vy * t;
