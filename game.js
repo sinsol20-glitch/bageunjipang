@@ -190,6 +190,8 @@ function spawnShooter() {
     vy: 0,
     r: 38,
     returning: false,
+    missed: false,
+    enteredArena: false,
   };
 }
 
@@ -258,9 +260,7 @@ function onPointerUp(event) {
   state.shooter.vx = Math.cos(angle) * shotSpeed;
   state.shooter.vy = Math.sin(angle) * shotSpeed;
   state.flying = true;
-  state.shots -= 1;
   pointer = null;
-  updateHud();
 }
 
 function loop(time = performance.now()) {
@@ -343,6 +343,7 @@ function updateShooter(dt) {
   shooter.vx *= airDrag;
   shooter.vy *= airDrag;
   shooter.angle += Math.hypot(shooter.vx, shooter.vy) * dt * 0.016;
+  if (shooter.y < 750) shooter.enteredArena = true;
 
   if (shooter.x < shooter.r || shooter.x > W - shooter.r) {
     shooter.vx *= -wallBounce;
@@ -357,8 +358,13 @@ function updateShooter(dt) {
     }
   }
 
-  if (shooter.y < 40 || shooter.y > H + 90 || Math.hypot(shooter.vx, shooter.vy) < 42) {
-    shooter.returning = true;
+  if (shooter.y < 64 || (shooter.enteredArena && shooter.y > 770)) {
+    failShot(false);
+    return;
+  }
+
+  if (Math.hypot(shooter.vx, shooter.vy) < 42) {
+    failShot(true);
   }
 }
 
@@ -374,7 +380,7 @@ function handleHit(target) {
   if (target.isPoop) {
     burst(target.x, target.y, "#8a5a2d");
     target.pop = 1;
-    state.shooter.returning = true;
+    failShot(true);
     return;
   }
 
@@ -396,15 +402,33 @@ function handleHit(target) {
   }
 
   target.pop = 1;
-  state.shooter.returning = true;
+  failShot(true);
 }
 
-function finishMiss() {
+function failShot(shouldReturn) {
+  if (!state.shooter || state.shooter.missed) return;
+  state.shooter.missed = true;
+  state.shots = Math.max(0, state.shots - 1);
+  updateHud();
+
   if (state.shots <= 0) {
     state.lose = true;
+    state.flying = false;
     showMessage("기회 끝!\n다시 해보자");
     return;
   }
+
+  if (shouldReturn) {
+    state.shooter.returning = true;
+    return;
+  }
+
+  state.flying = false;
+  state.shooter = null;
+  setTimeout(spawnShooter, 220);
+}
+
+function finishMiss() {
   state.shooter = null;
   setTimeout(spawnShooter, 170);
 }
@@ -462,7 +486,8 @@ function drawBackground() {
   ctx.fillStyle = "#6b788a";
   ctx.font = "700 24px 'Segoe UI', 'Noto Sans KR', sans-serif";
   ctx.textAlign = "center";
-  ctx.fillText(`같은 친구 ${state.goalLeft}/${state.goalTotal}개 남았어요`, W / 2, 68);
+  const goalText = state.goalLeft === 1 ? "같은 친구 1개만 더 맞히면 성공!" : `같은 친구 ${state.goalLeft}개를 더 맞혀요`;
+  ctx.fillText(goalText, W / 2, 68);
 
   if (state.level >= 4) {
     ctx.fillStyle = "#d05f38";
