@@ -4,6 +4,7 @@ const levelText = document.getElementById("levelText");
 const shotsText = document.getElementById("shotsText");
 const scoreText = document.getElementById("scoreText");
 const message = document.getElementById("message");
+const homeBtn = document.getElementById("homeBtn");
 const restartBtn = document.getElementById("restartBtn");
 const nextBtn = document.getElementById("nextBtn");
 
@@ -11,6 +12,7 @@ const W = canvas.width;
 const H = canvas.height;
 const launchSpot = { x: W / 2, y: H - 235 };
 const queueY = H - 88;
+const maxLevel = 10;
 const shotSpeed = 860;
 const enterSpeed = 3.1;
 const returnSpeed = 9.5;
@@ -41,6 +43,7 @@ let rafId = null;
 let lastTime = 0;
 
 function makeLevel(level) {
+  level = Math.max(1, Math.min(level, maxLevel));
   const heroCount = Math.min(3 + Math.floor((level - 1) / 2), 5);
   const heroes = shuffle(animals).slice(0, heroCount);
   const shooterType = heroes[(level - 1) % heroes.length];
@@ -67,16 +70,17 @@ function makeLevel(level) {
 
 function makeTargets(level, heroes, shooterType) {
   const targets = [];
-  const count = Math.min(5 + level * 2, 18);
-  const columns = level < 3 ? 4 : Math.min(4 + Math.floor(level / 2), 6);
+  const difficulty = Math.min(level, maxLevel);
+  const count = Math.min(5 + difficulty * 2, 18);
+  const columns = difficulty < 3 ? 4 : Math.min(4 + Math.floor(difficulty / 2), 6);
   const gapX = W / (columns + 1);
-  const gapY = Math.max(88, 126 - level * 5);
+  const gapY = Math.max(88, 126 - difficulty * 5);
   const startY = 156;
-  const moving = level >= 4;
-  const targetRadius = Math.max(28, 38 - Math.floor(level / 2));
-  const bombCount = level >= 4 ? Math.min(1 + Math.floor((level - 4) / 2), 4) : 0;
-  const poopCount = level >= 2 ? Math.min(1 + Math.floor((level - 2) / 2), 5) : 0;
-  const goalCount = Math.min(2 + Math.floor(level / 2), Math.max(2, count - bombCount - poopCount - 1));
+  const moving = difficulty >= 4;
+  const targetRadius = Math.max(28, 38 - Math.floor(difficulty / 2));
+  const bombCount = difficulty >= 4 ? Math.min(1 + Math.floor((difficulty - 4) / 2), 4) : 0;
+  const poopCount = difficulty >= 2 ? Math.min(1 + Math.floor((difficulty - 2) / 2), 5) : 0;
+  const goalCount = Math.min(2 + Math.floor(difficulty / 2), Math.max(2, count - bombCount - poopCount - 1));
   const winningSlots = new Set();
   const hazardSlots = new Map();
 
@@ -102,12 +106,12 @@ function makeTargets(level, heroes, shooterType) {
 
     const hazard = hazardSlots.get(i);
     if (hazard === "bomb") {
-      targets.push(makeBomb(x, y, moving, level));
+      targets.push(makeBomb(x, y, moving, difficulty));
       continue;
     }
 
     if (hazard === "poop") {
-      targets.push(makePoop(x, y, moving, level));
+      targets.push(makePoop(x, y, moving, difficulty));
       continue;
     }
 
@@ -123,7 +127,7 @@ function makeTargets(level, heroes, shooterType) {
       isBomb: false,
       isPoop: false,
       phase: Math.random() * Math.PI * 2,
-      speed: moving ? 0.7 + level * 0.08 + Math.random() * 0.5 : 0,
+      speed: moving ? 0.7 + difficulty * 0.08 + Math.random() * 0.5 : 0,
     });
   }
 
@@ -216,6 +220,7 @@ function updateHud() {
   levelText.textContent = state.level;
   shotsText.textContent = state.shots;
   scoreText.textContent = state.score;
+  nextBtn.textContent = state.level >= maxLevel ? "처음으로" : "다음 단계";
 }
 
 function canvasPoint(event) {
@@ -394,7 +399,11 @@ function handleHit(target) {
     updateHud();
     if (state.goalLeft <= 0) {
       state.win = true;
-      showMessage(`성공!\n${state.level + 1}단계로 가자!`);
+      if (state.level >= maxLevel) {
+        showMessage("모두 깼어!\n바근지팡 최고!");
+      } else {
+        showMessage(`성공!\n${state.level + 1}단계로 가자!`);
+      }
     } else {
       setTimeout(spawnShooter, 260);
     }
@@ -750,7 +759,14 @@ canvas.addEventListener("pointermove", onPointerMove);
 canvas.addEventListener("pointerup", onPointerUp);
 canvas.addEventListener("pointercancel", onPointerUp);
 
+homeBtn.addEventListener("click", () => start(1));
 restartBtn.addEventListener("click", () => start(state.level));
-nextBtn.addEventListener("click", () => start(state.level + 1));
+nextBtn.addEventListener("click", () => {
+  if (state.level >= maxLevel) {
+    start(1);
+  } else {
+    start(state.level + 1);
+  }
+});
 
 start();
