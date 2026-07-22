@@ -688,15 +688,10 @@ function drawHeroQueue() {
       x: startX + i * gap,
       y: queueY,
       r: isActive ? 40 : 34,
+      suppressLabel: true,
     };
     drawAnimal(mini, 0, isActive);
   }
-
-  ctx.fillStyle = "#6b788a";
-  ctx.font = "700 17px 'Segoe UI', 'Noto Sans KR', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("아래 친구를 누르면 바꿔요", W / 2, H - 42);
 }
 
 function drawAnimal(animal, wobble = 0, isShooter = false) {
@@ -733,7 +728,7 @@ function drawAnimal(animal, wobble = 0, isShooter = false) {
 
   ctx.restore();
 
-  if (isShooter && animal.r > 34) {
+  if (isShooter && animal.r > 34 && !animal.suppressLabel) {
     ctx.fillStyle = "#253040";
     ctx.font = "800 22px 'Segoe UI', 'Noto Sans KR', sans-serif";
     ctx.textAlign = "center";

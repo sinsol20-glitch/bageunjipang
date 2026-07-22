@@ -144,6 +144,20 @@ canvas {
   display: grid;
   gap: 10px;
   grid-template-columns: 1fr 1fr;
+  margin-top: 8px;
+}
+
+.switch-hint {
+  background: rgba(255, 255, 255, 0.74);
+  border: 2px solid rgba(190, 203, 219, 0.85);
+  border-radius: 8px;
+  color: #516070;
+  font-size: 16px;
+  font-weight: 800;
+  line-height: 1.3;
+  margin: 2px 0 -2px;
+  padding: 9px 12px;
+  text-align: center;
 }
 
 button {
@@ -198,5 +212,11 @@ button:hover {
 
   .message {
     font-size: 24px;
+  }
+
+  .switch-hint {
+    font-size: 14px;
+    margin-top: 0;
+    padding: 8px 10px;
   }
 }
