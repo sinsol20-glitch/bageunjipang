@@ -54,7 +54,10 @@ body {
 .top-actions {
   display: flex;
   flex: 0 0 auto;
+  flex-wrap: wrap;
   gap: 8px;
+  justify-content: flex-end;
+  max-width: 330px;
 }
 
 .eyebrow {
@@ -262,6 +265,11 @@ button:hover {
   padding: 8px 10px;
 }
 
+.rank-list .empty-rank {
+  display: block;
+  text-align: center;
+}
+
 .rank-name {
   min-width: 0;
   overflow: hidden;
@@ -272,6 +280,18 @@ button:hover {
 .rank-score,
 .rank-time {
   white-space: nowrap;
+}
+
+.modal-actions {
+  display: grid;
+  gap: 10px;
+  grid-template-columns: 1fr 1fr;
+}
+
+.modal-actions button {
+  min-width: 0;
+  padding-left: 10px;
+  padding-right: 10px;
 }
 
 @media (max-width: 620px) {
@@ -295,7 +315,7 @@ button:hover {
   .home-button {
     font-size: 13px;
     min-height: 40px;
-    padding: 8px 9px;
+    padding: 8px 8px;
   }
 
   .stats div {

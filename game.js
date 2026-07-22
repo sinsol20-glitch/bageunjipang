@@ -9,12 +9,19 @@ const nameModal = document.getElementById("nameModal");
 const nameInput = document.getElementById("nameInput");
 const nameStartBtn = document.getElementById("nameStartBtn");
 const rankModal = document.getElementById("rankModal");
+const rankTitle = document.getElementById("rankTitle");
 const rankList = document.getElementById("rankList");
 const rankRestartBtn = document.getElementById("rankRestartBtn");
+const rankCloseBtn = document.getElementById("rankCloseBtn");
 const soundBtn = document.getElementById("soundBtn");
+const rankBtn = document.getElementById("rankBtn");
+const pauseBtn = document.getElementById("pauseBtn");
 const homeBtn = document.getElementById("homeBtn");
 const restartBtn = document.getElementById("restartBtn");
 const nextBtn = document.getElementById("nextBtn");
+const pauseModal = document.getElementById("pauseModal");
+const resumeBtn = document.getElementById("resumeBtn");
+const pauseHomeBtn = document.getElementById("pauseHomeBtn");
 
 const W = canvas.width;
 const H = canvas.height;
@@ -89,6 +96,7 @@ function makeLevel(level, resetScore = false) {
     flying: false,
     win: false,
     lose: false,
+    paused: false,
     sparkles: [],
   };
 }
@@ -270,6 +278,7 @@ function getHeroQueuePosition(id) {
 
 function start(level = 1, resetScore = false) {
   rankModal.classList.add("hidden");
+  pauseModal.classList.add("hidden");
   state = makeLevel(level, resetScore);
   pointer = null;
   if (holdTimer) {
@@ -365,7 +374,7 @@ function playNoise(duration = 0.12, volume = 0.08) {
 }
 
 function playMusicStep() {
-  if (!soundOn || !audioCtx || state?.win || state?.lose) return;
+  if (!soundOn || !audioCtx || state?.win || state?.lose || state?.paused) return;
   playTone(melody[musicStep % melody.length], 0.105, "square", 0.026);
   if (musicStep % 2 === 0) playTone(bass[Math.floor(musicStep / 2) % bass.length], 0.14, "triangle", 0.018);
   musicStep += 1;
@@ -402,7 +411,7 @@ function canvasPoint(event) {
 }
 
 function onPointerDown(event) {
-  if (state.win || state.lose || state.flying || state.entering || !state.shooter) return;
+  if (state.paused || state.win || state.lose || state.flying || state.entering || !state.shooter) return;
   const p = canvasPoint(event);
   const hero = getQueueHeroAtPoint(p);
   if (hero) {
@@ -505,6 +514,7 @@ function loop(time = performance.now()) {
 }
 
 function update(dt, time) {
+  if (state.paused) return;
   updateTimer(dt);
   updateSparkles(dt);
   updateTargets(dt, time);
@@ -573,10 +583,23 @@ function compareRanks(a, b) {
   return new Date(a.date) - new Date(b.date);
 }
 
-function showRanks() {
-  stopMusic();
+function showRanks(isFinal = false) {
+  if (isFinal) stopMusic();
+  if (!isFinal && state && !state.win && !state.lose) {
+    state.paused = true;
+  }
   const ranks = readRanks();
   rankList.innerHTML = "";
+  rankTitle.textContent = isFinal ? "모두 깼어!" : "우리 순위";
+  rankRestartBtn.textContent = isFinal ? "처음부터 다시" : "새 게임";
+
+  if (!ranks.length) {
+    const item = document.createElement("li");
+    item.className = "empty-rank";
+    item.textContent = "아직 순위가 없어요";
+    rankList.appendChild(item);
+  }
+
   for (const rank of ranks.slice(0, 5)) {
     const item = document.createElement("li");
     const name = document.createElement("span");
@@ -594,6 +617,21 @@ function showRanks() {
     rankList.appendChild(item);
   }
   rankModal.classList.remove("hidden");
+}
+
+function pauseGame() {
+  if (!state || state.win || state.lose) return;
+  state.paused = true;
+  pauseModal.classList.remove("hidden");
+}
+
+function resumeGame() {
+  if (!state) return;
+  state.paused = false;
+  rankModal.classList.add("hidden");
+  pauseModal.classList.add("hidden");
+  lastTime = performance.now();
+  if (soundOn) startMusic();
 }
 
 function updateSparkles(dt) {
@@ -750,7 +788,7 @@ function handleHit(target) {
       playWinSound();
       if (state.level >= maxLevel) {
         saveRank();
-        showRanks();
+        showRanks(true);
       } else {
         showMessage(`성공!\n${state.level + 1}단계로 가자!`);
       }
@@ -1125,7 +1163,12 @@ nameInput.addEventListener("keydown", (event) => {
   if (event.key === "Enter") beginGameFromName();
 });
 rankRestartBtn.addEventListener("click", () => start(1, true));
+rankCloseBtn.addEventListener("click", resumeGame);
 soundBtn.addEventListener("click", () => setSound(!soundOn));
+rankBtn.addEventListener("click", () => showRanks(false));
+pauseBtn.addEventListener("click", pauseGame);
+resumeBtn.addEventListener("click", resumeGame);
+pauseHomeBtn.addEventListener("click", () => start(1, true));
 homeBtn.addEventListener("click", () => start(1, true));
 restartBtn.addEventListener("click", restartCurrentLevel);
 nextBtn.addEventListener("click", () => {

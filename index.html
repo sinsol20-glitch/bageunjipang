@@ -15,6 +15,8 @@
         </div>
         <div class="top-actions">
           <button id="soundBtn" class="home-button" type="button">소리 켜기</button>
+          <button id="rankBtn" class="home-button" type="button">순위표</button>
+          <button id="pauseBtn" class="home-button" type="button">멈춤</button>
           <button id="homeBtn" class="home-button" type="button">처음으로</button>
         </div>
       </section>
@@ -64,9 +66,24 @@
     <section id="rankModal" class="modal-layer hidden" aria-label="순위표">
       <div class="modal-card">
         <p class="eyebrow">바근지팡 순위표</p>
-        <h2>모두 깼어!</h2>
+        <h2 id="rankTitle">모두 깼어!</h2>
         <ol id="rankList" class="rank-list"></ol>
-        <button id="rankRestartBtn" type="button">처음부터 다시</button>
+        <div class="modal-actions">
+          <button id="rankCloseBtn" type="button">계속하기</button>
+          <button id="rankRestartBtn" type="button">처음부터 다시</button>
+        </div>
+      </div>
+    </section>
+
+    <section id="pauseModal" class="modal-layer hidden" aria-label="일시정지">
+      <div class="modal-card">
+        <p class="eyebrow">잠깐 쉬기</p>
+        <h2>멈췄어요</h2>
+        <p class="modal-note">시간과 캐릭터 움직임이 잠깐 멈춰요.</p>
+        <div class="modal-actions">
+          <button id="resumeBtn" type="button">계속하기</button>
+          <button id="pauseHomeBtn" type="button">처음부터</button>
+        </div>
       </div>
     </section>
 
