@@ -40,6 +40,7 @@ for (const animal of animals) {
 let state;
 let pointer = null;
 let holdTimer = null;
+let queuePress = null;
 let rafId = null;
 let lastTime = 0;
 
@@ -223,6 +224,7 @@ function start(level = 1) {
     window.clearTimeout(holdTimer);
     holdTimer = null;
   }
+  queuePress = null;
   lastTime = performance.now();
   message.classList.add("hidden");
   spawnShooter();
@@ -250,10 +252,12 @@ function onPointerDown(event) {
   const p = canvasPoint(event);
   const hero = getQueueHeroAtPoint(p);
   if (hero) {
+    queuePress = { heroId: hero.id, x: p.x, y: p.y, switched: false };
     holdTimer = window.setTimeout(() => {
-      switchShooter(hero.id);
+      queuePress.switched = switchShooter(hero.id);
       holdTimer = null;
-    }, 430);
+    }, 320);
+    canvas.setPointerCapture(event.pointerId);
     return;
   }
 
@@ -264,9 +268,13 @@ function onPointerDown(event) {
 }
 
 function onPointerMove(event) {
-  if (holdTimer) {
-    window.clearTimeout(holdTimer);
-    holdTimer = null;
+  if (queuePress) {
+    const p = canvasPoint(event);
+    if (Math.hypot(p.x - queuePress.x, p.y - queuePress.y) > 38 && holdTimer) {
+      window.clearTimeout(holdTimer);
+      holdTimer = null;
+    }
+    return;
   }
   if (!pointer || state.flying) return;
   pointer = canvasPoint(event);
@@ -277,6 +285,11 @@ function onPointerUp(event) {
   if (holdTimer) {
     window.clearTimeout(holdTimer);
     holdTimer = null;
+  }
+  if (queuePress) {
+    if (!queuePress.switched) switchShooter(queuePress.heroId);
+    queuePress = null;
+    return;
   }
   if (!pointer || state.flying || state.entering || !state.shooter) return;
 
@@ -300,13 +313,13 @@ function onPointerUp(event) {
 }
 
 function getQueueHeroAtPoint(point) {
-  const gap = 78;
+  const gap = 94;
   const startX = W / 2 - ((state.heroes.length - 1) * gap) / 2;
 
   for (let i = 0; i < state.heroes.length; i += 1) {
     const hero = state.heroes[i];
     const x = startX + i * gap;
-    if (Math.hypot(point.x - x, point.y - queueY) < 42) return hero;
+    if (Math.abs(point.x - x) < 48 && Math.abs(point.y - queueY) < 58) return hero;
   }
 
   return null;
@@ -315,11 +328,12 @@ function getQueueHeroAtPoint(point) {
 function switchShooter(heroId) {
   if (state.flying || state.entering || !state.shooter) return;
   const hero = state.heroes.find((item) => item.id === heroId);
-  if (!hero || hero.id === state.shooterType.id) return;
+  if (!hero || hero.id === state.shooterType.id) return false;
 
   state.shooterType = hero;
   state.shooter = null;
   spawnShooter();
+  return true;
 }
 
 function loop(time = performance.now()) {
@@ -537,6 +551,9 @@ function drawBackground() {
   ctx.beginPath();
   ctx.roundRect(48, 104, W - 96, 610, 42);
   ctx.fill();
+  ctx.strokeStyle = "rgba(190, 203, 219, 0.95)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
 
   ctx.strokeStyle = "#d9e0ea";
   ctx.lineWidth = 2;
@@ -643,7 +660,7 @@ function drawLauncher() {
   drawHeroQueue();
   ctx.fillStyle = "rgba(255, 138, 122, 0.14)";
   ctx.strokeStyle = "rgba(255, 138, 122, 0.5)";
-  ctx.lineWidth = 4;
+  ctx.lineWidth = 5;
   ctx.beginPath();
   ctx.arc(launchSpot.x, launchSpot.y, 72, 0, Math.PI * 2);
   ctx.fill();
@@ -653,18 +670,15 @@ function drawLauncher() {
 }
 
 function drawHeroQueue() {
-  const gap = 78;
+  const gap = 94;
   const startX = W / 2 - ((state.heroes.length - 1) * gap) / 2;
   ctx.fillStyle = "#e9f7f0";
   ctx.beginPath();
-  ctx.roundRect(88, H - 132, W - 176, 92, 36);
+  ctx.roundRect(58, H - 144, W - 116, 112, 40);
   ctx.fill();
-
-  ctx.fillStyle = "#6b788a";
-  ctx.font = "700 17px 'Segoe UI', 'Noto Sans KR', sans-serif";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "middle";
-  ctx.fillText("아래 친구를 길게 누르면 바꿔요", W / 2, H - 128);
+  ctx.strokeStyle = "rgba(165, 204, 186, 0.95)";
+  ctx.lineWidth = 4;
+  ctx.stroke();
 
   for (let i = 0; i < state.heroes.length; i += 1) {
     const hero = state.heroes[i];
@@ -673,10 +687,16 @@ function drawHeroQueue() {
       ...hero,
       x: startX + i * gap,
       y: queueY,
-      r: isActive ? 29 : 24,
+      r: isActive ? 40 : 34,
     };
     drawAnimal(mini, 0, isActive);
   }
+
+  ctx.fillStyle = "#6b788a";
+  ctx.font = "700 17px 'Segoe UI', 'Noto Sans KR', sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText("아래 친구를 누르면 바꿔요", W / 2, H - 42);
 }
 
 function drawAnimal(animal, wobble = 0, isShooter = false) {
