@@ -1138,4 +1138,10 @@ nextBtn.addEventListener("click", () => {
 
 nameInput.value = currentPlayer;
 soundBtn.textContent = soundOn ? "소리 끄기" : "소리 켜기";
-setTimeout(() => nameInput.focus(), 100);
+
+if (currentPlayer) {
+  nameModal.classList.add("hidden");
+  start(1, true);
+} else {
+  setTimeout(() => nameInput.focus(), 100);
+}
