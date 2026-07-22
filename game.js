@@ -77,6 +77,8 @@ function makeLevel(level, resetScore = false) {
     timeLeft: getLevelTime(level),
     totalTime: resetScore ? 0 : (state && state.totalTime) || 0,
     score: resetScore ? 0 : (state && state.score) || 0,
+    levelStartTime: resetScore ? 0 : (state && state.totalTime) || 0,
+    levelStartScore: resetScore ? 0 : (state && state.score) || 0,
     heroes,
     shooterType,
     targets,
@@ -283,12 +285,23 @@ function start(level = 1, resetScore = false) {
   loop();
 }
 
+function restartCurrentLevel() {
+  if (!state) {
+    start(1, true);
+    return;
+  }
+
+  state.score = state.levelStartScore;
+  state.totalTime = state.levelStartTime;
+  start(state.level);
+}
+
 function updateHud() {
   levelText.textContent = state.level;
   shotsText.textContent = state.shots;
   timeText.textContent = Math.max(0, Math.ceil(state.timeLeft));
   scoreText.textContent = state.score;
-  nextBtn.textContent = state.level >= maxLevel ? "처음으로" : "다음 단계";
+  nextBtn.textContent = state.level >= maxLevel ? "처음부터" : "다음 단계";
   soundBtn.textContent = soundOn ? "소리 끄기" : "소리 켜기";
 }
 
@@ -566,7 +579,18 @@ function showRanks() {
   rankList.innerHTML = "";
   for (const rank of ranks.slice(0, 5)) {
     const item = document.createElement("li");
-    item.textContent = `${rank.name} - ${rank.score}점 / ${rank.totalTime || "?"}초`;
+    const name = document.createElement("span");
+    const score = document.createElement("span");
+    const time = document.createElement("span");
+
+    name.className = "rank-name";
+    score.className = "rank-score";
+    time.className = "rank-time";
+    name.textContent = cleanName(rank.name || "");
+    score.textContent = `${rank.score}점`;
+    time.textContent = `${rank.totalTime || "?"}초`;
+
+    item.append(name, score, time);
     rankList.appendChild(item);
   }
   rankModal.classList.remove("hidden");
@@ -1103,10 +1127,10 @@ nameInput.addEventListener("keydown", (event) => {
 rankRestartBtn.addEventListener("click", () => start(1, true));
 soundBtn.addEventListener("click", () => setSound(!soundOn));
 homeBtn.addEventListener("click", () => start(1, true));
-restartBtn.addEventListener("click", () => start(state.level));
+restartBtn.addEventListener("click", restartCurrentLevel);
 nextBtn.addEventListener("click", () => {
   if (state.level >= maxLevel) {
-    start(1);
+    start(1, true);
   } else {
     start(state.level + 1);
   }
