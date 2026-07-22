@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>바근지팡</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="game-shell">
+      <section class="top-bar" aria-label="게임 정보">
+        <div>
+          <p class="eyebrow">밑에서 쏘는 캐릭터 게임</p>
+          <h1>바근지팡</h1>
+        </div>
+        <div class="stats">
+          <div>
+            <span>단계</span>
+            <strong id="levelText">1</strong>
+          </div>
+          <div>
+            <span>기회</span>
+            <strong id="shotsText">8</strong>
+          </div>
+          <div>
+            <span>점수</span>
+            <strong id="scoreText">0</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="play-wrap">
+        <canvas id="gameCanvas" width="900" height="1180" aria-label="바근지팡 게임 화면"></canvas>
+        <div id="message" class="message hidden" role="status" aria-live="polite"></div>
+      </section>
+
+      <section class="controls">
+        <button id="restartBtn" type="button">다시 시작</button>
+        <button id="nextBtn" type="button">다음 단계</button>
+      </section>
+    </main>
+
+    <script src="./game.js"></script>
+  </body>
+</html>
