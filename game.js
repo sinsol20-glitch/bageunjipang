@@ -417,6 +417,41 @@ function updateTargets(dt, time) {
     target.x = target.orbitCx + Math.cos(target.orbitAngle + target.phase * 0.08) * target.orbitRx;
     target.y = target.orbitCy + Math.sin(target.orbitAngle + target.phase * 0.08) * target.orbitRy;
   }
+  separateTargets();
+}
+
+function separateTargets() {
+  const aliveTargets = state.targets.filter((target) => target.alive);
+
+  for (let pass = 0; pass < 3; pass += 1) {
+    for (let i = 0; i < aliveTargets.length; i += 1) {
+      for (let j = i + 1; j < aliveTargets.length; j += 1) {
+        const a = aliveTargets[i];
+        const b = aliveTargets[j];
+        const dx = b.x - a.x;
+        const dy = b.y - a.y;
+        const distanceNow = Math.hypot(dx, dy) || 1;
+        const minGap = Math.max(56, a.r + b.r + 10);
+
+        if (distanceNow >= minGap) continue;
+
+        const push = (minGap - distanceNow) / 2;
+        const nx = dx / distanceNow;
+        const ny = dy / distanceNow;
+        a.x -= nx * push;
+        a.y -= ny * push;
+        b.x += nx * push;
+        b.y += ny * push;
+        keepTargetInsideArena(a);
+        keepTargetInsideArena(b);
+      }
+    }
+  }
+}
+
+function keepTargetInsideArena(target) {
+  target.x = Math.max(82, Math.min(W - 82, target.x));
+  target.y = Math.max(156, Math.min(672, target.y));
 }
 
 function updateShooter(dt) {
@@ -595,7 +630,7 @@ function drawBackground() {
 
   ctx.fillStyle = "#f5fbff";
   ctx.beginPath();
-  ctx.roundRect(48, 104, W - 96, 610, 42);
+  ctx.roundRect(48, 132, W - 96, 582, 42);
   ctx.fill();
   ctx.strokeStyle = "rgba(190, 203, 219, 0.95)";
   ctx.lineWidth = 4;
@@ -613,14 +648,15 @@ function drawBackground() {
   ctx.globalAlpha = 1;
 
   ctx.fillStyle = "#6b788a";
-  ctx.font = "700 24px 'Segoe UI', 'Noto Sans KR', sans-serif";
+  ctx.font = "700 21px 'Segoe UI', 'Noto Sans KR', sans-serif";
   ctx.textAlign = "center";
   const goalText = state.goalLeft === 1 ? "같은 친구 1개만 더 맞히면 성공!" : `같은 친구 ${state.goalLeft}개를 더 맞혀요`;
-  ctx.fillText(goalText, W / 2, 68);
+  ctx.fillText(goalText, W / 2, 58);
 
   if (state.level >= 4) {
     ctx.fillStyle = "#d05f38";
-    ctx.fillText("단계가 올라가면 더 작고 빠르게 움직여요", W / 2, 105);
+    ctx.font = "700 19px 'Segoe UI', 'Noto Sans KR', sans-serif";
+    ctx.fillText("더 작고 빠르게 움직여요", W / 2, 88);
   }
 }
 
@@ -811,11 +847,11 @@ function drawBomb(bomb) {
   ctx.arc(bomb.r * 0.19, -bomb.r * 1.36, 8, 0, Math.PI * 2);
   ctx.fill();
 
-  ctx.fillStyle = "#ffffff";
-  ctx.font = "900 22px 'Segoe UI', sans-serif";
+  ctx.fillStyle = "#ffcf66";
+  ctx.font = "900 26px 'Segoe UI', sans-serif";
   ctx.textAlign = "center";
   ctx.textBaseline = "middle";
-  ctx.fillText("!", 0, 2);
+  ctx.fillText("*", 0, 4);
   ctx.restore();
 }
 
