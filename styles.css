@@ -67,7 +67,7 @@ h1 {
 .stats {
   display: grid;
   gap: 8px;
-  grid-template-columns: repeat(3, minmax(64px, 1fr));
+  grid-template-columns: repeat(4, minmax(58px, 1fr));
 }
 
 .home-button {
@@ -100,7 +100,7 @@ h1 {
 
 .stats strong {
   display: block;
-  font-size: 22px;
+  font-size: 21px;
   line-height: 1.1;
 }
 
@@ -207,7 +207,7 @@ button:hover {
   }
 
   .stats div {
-    padding: 7px 6px;
+    padding: 7px 4px;
   }
 
   .message {

@@ -2,6 +2,7 @@ const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 const levelText = document.getElementById("levelText");
 const shotsText = document.getElementById("shotsText");
+const timeText = document.getElementById("timeText");
 const scoreText = document.getElementById("scoreText");
 const message = document.getElementById("message");
 const homeBtn = document.getElementById("homeBtn");
@@ -55,6 +56,7 @@ function makeLevel(level) {
   return {
     level,
     shots: Math.max(goalTotal + 2, 8 - Math.floor(level / 3)),
+    timeLeft: getLevelTime(level),
     score: (state && state.score) || 0,
     heroes,
     shooterType,
@@ -135,7 +137,35 @@ function makeTargets(level, heroes, shooterType) {
     });
   }
 
-  return shuffle(targets);
+  return setupOrbitingTargets(shuffle(targets), difficulty);
+}
+
+function getLevelTime(level) {
+  return Math.max(25, 48 - level * 2);
+}
+
+function setupOrbitingTargets(targets, difficulty) {
+  const centerX = W / 2;
+  const centerY = 285;
+  const outerCount = Math.ceil(targets.length / 2);
+
+  return targets.map((target, index) => {
+    const outerLane = index < outerCount;
+    const laneIndex = outerLane ? index : index - outerCount;
+    const laneCount = outerLane ? outerCount : targets.length - outerCount;
+    const angle = -Math.PI + (Math.PI * 2 * laneIndex) / Math.max(1, laneCount);
+    const speed = (0.32 + difficulty * 0.035) * (outerLane ? 1 : 1.15);
+
+    return {
+      ...target,
+      orbitCx: centerX,
+      orbitCy: centerY + (outerLane ? 6 : 20),
+      orbitRx: outerLane ? 312 : 218,
+      orbitRy: outerLane ? 132 : 82,
+      orbitAngle: angle,
+      orbitSpeed: speed,
+    };
+  });
 }
 
 function pickObstacleAnimal(index, level, shooterType) {
@@ -235,6 +265,7 @@ function start(level = 1) {
 function updateHud() {
   levelText.textContent = state.level;
   shotsText.textContent = state.shots;
+  timeText.textContent = Math.max(0, Math.ceil(state.timeLeft));
   scoreText.textContent = state.score;
   nextBtn.textContent = state.level >= maxLevel ? "처음으로" : "다음 단계";
 }
@@ -351,9 +382,25 @@ function loop(time = performance.now()) {
 }
 
 function update(dt, time) {
+  updateTimer(dt);
   updateSparkles(dt);
   updateTargets(dt, time);
   updateShooter(dt);
+}
+
+function updateTimer(dt) {
+  if (state.win || state.lose) return;
+  state.timeLeft -= dt;
+  if (state.timeLeft <= 0) {
+    state.timeLeft = 0;
+    state.lose = true;
+    state.flying = false;
+    state.shooter = null;
+    updateHud();
+    showMessage("시간 끝!\n다시 해보자");
+    return;
+  }
+  updateHud();
 }
 
 function updateSparkles(dt) {
@@ -366,10 +413,9 @@ function updateTargets(dt, time) {
   for (const target of state.targets) {
     if (target.pop > 0) target.pop = Math.max(0, target.pop - dt * 3);
     if (!target.alive) continue;
-    const orbit = target.speed ? 38 : 14;
-    const drift = target.speed || 0.28;
-    target.x = target.baseX + Math.cos(time * drift + target.phase) * orbit;
-    target.y = target.baseY + Math.sin(time * drift + target.phase) * orbit * 0.55;
+    target.orbitAngle += target.orbitSpeed * dt;
+    target.x = target.orbitCx + Math.cos(target.orbitAngle + target.phase * 0.08) * target.orbitRx;
+    target.y = target.orbitCy + Math.sin(target.orbitAngle + target.phase * 0.08) * target.orbitRy;
   }
 }
 
