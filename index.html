@@ -48,6 +48,25 @@
       </section>
     </main>
 
+    <section id="nameModal" class="modal-layer" aria-label="닉네임 입력">
+      <div class="modal-card">
+        <p class="eyebrow">오락실 이름표</p>
+        <h2>닉네임을 써요</h2>
+        <input id="nameInput" maxlength="10" autocomplete="off" placeholder="예: 은지" />
+        <button id="nameStartBtn" type="button">게임 시작</button>
+        <p class="modal-note">닉네임만 이 기기에 저장돼요.</p>
+      </div>
+    </section>
+
+    <section id="rankModal" class="modal-layer hidden" aria-label="순위표">
+      <div class="modal-card">
+        <p class="eyebrow">바근지팡 순위표</p>
+        <h2>모두 깼어!</h2>
+        <ol id="rankList" class="rank-list"></ol>
+        <button id="rankRestartBtn" type="button">처음부터 다시</button>
+      </div>
+    </section>
+
     <script src="./game.js"></script>
   </body>
 </html>

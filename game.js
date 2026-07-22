@@ -5,6 +5,12 @@ const shotsText = document.getElementById("shotsText");
 const timeText = document.getElementById("timeText");
 const scoreText = document.getElementById("scoreText");
 const message = document.getElementById("message");
+const nameModal = document.getElementById("nameModal");
+const nameInput = document.getElementById("nameInput");
+const nameStartBtn = document.getElementById("nameStartBtn");
+const rankModal = document.getElementById("rankModal");
+const rankList = document.getElementById("rankList");
+const rankRestartBtn = document.getElementById("rankRestartBtn");
 const homeBtn = document.getElementById("homeBtn");
 const restartBtn = document.getElementById("restartBtn");
 const nextBtn = document.getElementById("nextBtn");
@@ -19,6 +25,8 @@ const enterSpeed = 3.1;
 const returnSpeed = 9.5;
 const airDrag = 0.997;
 const wallBounce = 0.78;
+const nicknameKey = "bageunjipang:nickname";
+const ranksKey = "bageunjipang:ranks";
 const animals = [
   { id: "moon", color: "#ead9ff", label: "달", src: "./assets/character-1.png" },
   { id: "cookie", color: "#ffd2a1", label: "쿠키", src: "./assets/character-2.png" },
@@ -44,8 +52,9 @@ let holdTimer = null;
 let queuePress = null;
 let rafId = null;
 let lastTime = 0;
+let currentPlayer = localStorage.getItem(nicknameKey) || "";
 
-function makeLevel(level) {
+function makeLevel(level, resetScore = false) {
   level = Math.max(1, Math.min(level, maxLevel));
   const heroCount = Math.min(3 + Math.floor((level - 1) / 2), 5);
   const heroes = shuffle(animals).slice(0, heroCount);
@@ -57,7 +66,8 @@ function makeLevel(level) {
     level,
     shots: Math.max(goalTotal + 2, 8 - Math.floor(level / 3)),
     timeLeft: getLevelTime(level),
-    score: (state && state.score) || 0,
+    totalTime: resetScore ? 0 : (state && state.totalTime) || 0,
+    score: resetScore ? 0 : (state && state.score) || 0,
     heroes,
     shooterType,
     targets,
@@ -247,8 +257,9 @@ function getHeroQueuePosition(id) {
   return { x: startX + index * gap, y: queueY };
 }
 
-function start(level = 1) {
-  state = makeLevel(level);
+function start(level = 1, resetScore = false) {
+  rankModal.classList.add("hidden");
+  state = makeLevel(level, resetScore);
   pointer = null;
   if (holdTimer) {
     window.clearTimeout(holdTimer);
@@ -391,6 +402,7 @@ function update(dt, time) {
 function updateTimer(dt) {
   if (state.win || state.lose) return;
   state.timeLeft -= dt;
+  state.totalTime += dt;
   if (state.timeLeft <= 0) {
     state.timeLeft = 0;
     state.lose = true;
@@ -401,6 +413,56 @@ function updateTimer(dt) {
     return;
   }
   updateHud();
+}
+
+function cleanName(value) {
+  return value.trim().replace(/\s+/g, " ").slice(0, 10) || "친구";
+}
+
+function beginGameFromName() {
+  currentPlayer = cleanName(nameInput.value);
+  localStorage.setItem(nicknameKey, currentPlayer);
+  nameModal.classList.add("hidden");
+  start(1, true);
+}
+
+function readRanks() {
+  try {
+    return JSON.parse(localStorage.getItem(ranksKey) || "[]");
+  } catch {
+    return [];
+  }
+}
+
+function saveRank() {
+  const ranks = readRanks();
+  ranks.push({
+    name: currentPlayer || "친구",
+    score: state.score,
+    totalTime: Math.round(state.totalTime * 10) / 10,
+    shots: state.shots,
+    date: new Date().toISOString(),
+  });
+  ranks.sort(compareRanks);
+  localStorage.setItem(ranksKey, JSON.stringify(ranks.slice(0, 10)));
+}
+
+function compareRanks(a, b) {
+  if (b.score !== a.score) return b.score - a.score;
+  if ((a.totalTime || 9999) !== (b.totalTime || 9999)) return (a.totalTime || 9999) - (b.totalTime || 9999);
+  if ((b.shots || 0) !== (a.shots || 0)) return (b.shots || 0) - (a.shots || 0);
+  return new Date(a.date) - new Date(b.date);
+}
+
+function showRanks() {
+  const ranks = readRanks();
+  rankList.innerHTML = "";
+  for (const rank of ranks.slice(0, 5)) {
+    const item = document.createElement("li");
+    item.textContent = `${rank.name} - ${rank.score}점 / ${rank.totalTime || "?"}초`;
+    rankList.appendChild(item);
+  }
+  rankModal.classList.remove("hidden");
 }
 
 function updateSparkles(dt) {
@@ -552,7 +614,8 @@ function handleHit(target) {
     if (target.isGoal && state.goalLeft <= 0) {
       state.win = true;
       if (state.level >= maxLevel) {
-        showMessage("모두 깼어!\n바근지팡 최고!");
+        saveRank();
+        showRanks();
       } else {
         showMessage(`성공!\n${state.level + 1}단계로 가자!`);
       }
@@ -920,7 +983,12 @@ canvas.addEventListener("pointermove", onPointerMove);
 canvas.addEventListener("pointerup", onPointerUp);
 canvas.addEventListener("pointercancel", onPointerUp);
 
-homeBtn.addEventListener("click", () => start(1));
+nameStartBtn.addEventListener("click", beginGameFromName);
+nameInput.addEventListener("keydown", (event) => {
+  if (event.key === "Enter") beginGameFromName();
+});
+rankRestartBtn.addEventListener("click", () => start(1, true));
+homeBtn.addEventListener("click", () => start(1, true));
 restartBtn.addEventListener("click", () => start(state.level));
 nextBtn.addEventListener("click", () => {
   if (state.level >= maxLevel) {
@@ -930,4 +998,5 @@ nextBtn.addEventListener("click", () => {
   }
 });
 
-start();
+nameInput.value = currentPlayer;
+setTimeout(() => nameInput.focus(), 100);
