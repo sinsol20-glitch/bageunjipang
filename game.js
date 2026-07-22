@@ -11,7 +11,11 @@ const W = canvas.width;
 const H = canvas.height;
 const launchSpot = { x: W / 2, y: H - 235 };
 const queueY = H - 88;
-const shotSpeed = 780;
+const shotSpeed = 860;
+const enterSpeed = 3.1;
+const returnSpeed = 9.5;
+const airDrag = 0.997;
+const wallBounce = 0.78;
 const animals = [
   { id: "moon", color: "#ead9ff", label: "달", src: "./assets/character-1.png" },
   { id: "cookie", color: "#ffd2a1", label: "쿠키", src: "./assets/character-2.png" },
@@ -298,7 +302,7 @@ function updateShooter(dt) {
   if (!shooter) return;
 
   if (state.entering) {
-    shooter.enterTime = Math.min(1, shooter.enterTime + dt * 2.35);
+    shooter.enterTime = Math.min(1, shooter.enterTime + dt * enterSpeed);
     const ease = 1 - Math.pow(1 - shooter.enterTime, 3);
     shooter.x = mix(shooter.startX, launchSpot.x, ease);
     shooter.y = mix(shooter.startY, launchSpot.y, ease);
@@ -317,8 +321,8 @@ function updateShooter(dt) {
   if (shooter.returning) {
     const dx = launchSpot.x - shooter.x;
     const dy = launchSpot.y - shooter.y;
-    shooter.x += dx * Math.min(1, dt * 8);
-    shooter.y += dy * Math.min(1, dt * 8);
+    shooter.x += dx * Math.min(1, dt * returnSpeed);
+    shooter.y += dy * Math.min(1, dt * returnSpeed);
     shooter.angle += dt * 12;
 
     if (Math.hypot(dx, dy) < 5) {
@@ -336,12 +340,12 @@ function updateShooter(dt) {
 
   shooter.x += shooter.vx * dt;
   shooter.y += shooter.vy * dt;
-  shooter.vx *= 0.994;
-  shooter.vy *= 0.994;
+  shooter.vx *= airDrag;
+  shooter.vy *= airDrag;
   shooter.angle += Math.hypot(shooter.vx, shooter.vy) * dt * 0.016;
 
   if (shooter.x < shooter.r || shooter.x > W - shooter.r) {
-    shooter.vx *= -0.72;
+    shooter.vx *= -wallBounce;
     shooter.x = Math.max(shooter.r, Math.min(W - shooter.r, shooter.x));
   }
 
